@@ -32,7 +32,7 @@ export default function Tasks() {
   }, []);
 
   async function fetchTasks() {
-    fetch("http://localhost:8000/tasks")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`)
       .then((res) => res.json())
       .then((data) => setTasks(data));
   }
@@ -47,7 +47,7 @@ export default function Tasks() {
       priority
     };
 
-    await fetch("http://localhost:8000/tasks", {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

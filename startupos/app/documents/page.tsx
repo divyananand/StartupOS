@@ -13,7 +13,7 @@ export default function Documents()
 
     async function fetchDocuments()
     {
-        fetch("http://localhost:8000/documents")
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/documents`)
         .then((res)=>res.json())
         .then((data)=>setDocuments(data))
     }
@@ -23,7 +23,7 @@ export default function Documents()
 
         e.preventDefault();
 
-        await fetch("http://localhost:8000/documents",{
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/documents`,{
             method:"POST",
             headers:{
                 "Content-Type":"application/json"

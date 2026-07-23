@@ -42,13 +42,13 @@ export default function dashboard() {
   const [loading, setLoading] = useState(true);
 
   async function fetchDocuments() {
-    fetch("http://localhost:8000/documents")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/documents`)
       .then((res) => res.json())
       .then((data) => setDocuments(data));
   }
 
   async function fetchTasks() {
-    fetch("http://localhost:8000/tasks")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`)
       .then((res) => res.json())
       .then((data) => setTasks(data));
   }
@@ -58,12 +58,12 @@ export default function dashboard() {
     console.log("fetching now");
 
     Promise.all([
-      fetch("http://localhost:8000/documents").then((res) => res.json()),
-      fetch("http://localhost:8000/tasks").then((res) => res.json()),
-      fetch("http://localhost:8000/blockers").then((res) => res.json()),
-      fetch("http://localhost:8000/decisions").then((res) => res.json()),
-      fetch("http://localhost:8000/report").then((res) => res.json()),
-    ]).then(([docsData, tasksData, blockersData, decisionsData, reportsData]) => {
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/documents`).then((res) => res.json()),
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/tasks`).then((res) => res.json()),
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/blockers`).then((res) => res.json()),
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/decisions`).then((res) => res.json()),
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/report`).then((res) => res.json()),
+]).then(([docsData, tasksData, blockersData, decisionsData, reportsData]) => {
       setDocuments(docsData);
       setTasks(tasksData);
       setBlockers(blockersData);

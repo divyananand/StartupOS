@@ -7,7 +7,7 @@ export default function ExtractPage() {
 
     async function handleSubmit()
     {
-        const response = await fetch("http://localhost:8000/extract",{
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/extract`,{
             method:"POST",
             headers:{
                 "Content-Type":"application/json"

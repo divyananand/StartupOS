@@ -11,7 +11,7 @@ export default function AskPage() {
 
   async function HandleSubmit() {
     setLoading(true);
-    const response = await fetch("http://localhost:8000/ask", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ask`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

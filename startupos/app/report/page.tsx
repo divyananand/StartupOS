@@ -13,7 +13,7 @@ export default function ReportsPage() {
   async function HandleGenerateReport() {
     setLoading(true);
 
-    const response = await fetch("http://127.0.0.1:8000/report", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/report`, {
       method: "POST",
     });
 
@@ -25,11 +25,12 @@ export default function ReportsPage() {
 
   useEffect(() => {
     setHistoryLoading(true);
-    fetch("http://localhost:8000/report").then((res) => res.json())
-    .then((data) => {
-      setPastReport(data);
-      setHistoryLoading(false);
-    });
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/report`)
+      .then((res) => res.json())
+      .then((data) => {
+        setPastReport(data);
+        setHistoryLoading(false);
+      });
   }, []);
 
   return (
