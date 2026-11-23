@@ -134,7 +134,22 @@ ALTER TABLE {t} ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON
 CREATE INDEX IF NOT EXISTS {t}_user_id_idx ON {t}(user_id);
 """
     for t in USER_TABLES
-)
+) + """
+-- Demo accounts get a private sample workspace and are deleted after a day.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- One row per user per day, counting AI requests. Rows outlive deleted demo
+-- users (user_id becomes NULL) so daily totals can't be reset by cleanup.
+CREATE TABLE IF NOT EXISTS ai_usage (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+    day DATE NOT NULL DEFAULT CURRENT_DATE,
+    count INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (user_id, day)
+);
+CREATE INDEX IF NOT EXISTS ai_usage_day_idx ON ai_usage(day);
+"""
 
 
 def init_db():

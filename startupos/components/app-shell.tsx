@@ -16,7 +16,7 @@ function FullScreen({ children }: { children: ReactNode }) {
 }
 
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { status, error, retry } = useAuth();
+  const { status, error, retry, user, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -48,7 +48,27 @@ export default function AppShell({ children }: { children: ReactNode }) {
     return (
       <div className="lg:flex">
         <Sidebar />
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 flex-1">
+          {user?.is_demo && (
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-indigo-100 bg-indigo-50 px-4 py-2 text-center text-sm text-indigo-900">
+              <span>
+                <span className="font-semibold">Demo workspace</span>{" "}with sample data. It&apos;s private to you and deleted after 24 hours.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  // Full page load so the login redirect for protected pages can't race this.
+                  window.location.assign("/signup");
+                }}
+                className="font-semibold text-indigo-700 underline underline-offset-2 hover:text-indigo-500 cursor-pointer"
+              >
+                Create your own account
+              </button>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     );
   }

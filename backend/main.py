@@ -15,6 +15,7 @@ load_dotenv()
 
 from auth import current_user, router as auth_router  # noqa: E402
 from db import db, init_db, normalize  # noqa: E402
+from limits import ai_usage_today, charge_ai_request, refund_ai_request  # noqa: E402
 from validation import (  # noqa: E402
     DocumentIn,
     ExtractionSave,
@@ -39,6 +40,16 @@ def ask_claude(messages, max_tokens=1024):
     return message.content[0].text
 
 
+def ai_call(user: dict, messages, max_tokens=1024):
+    """Call Claude on behalf of a user, enforcing their daily AI limit."""
+    charge_ai_request(user)
+    try:
+        return ask_claude(messages, max_tokens)
+    except Exception:
+        refund_ai_request(user)
+        raise
+
+
 app = FastAPI(title="StartupOS API")
 
 
@@ -59,8 +70,8 @@ origins = [o.strip() for o in os.getenv("FRONTEND_ORIGINS", default_origins).spl
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    # Vercel gives every deployment a new URL; allow this project's ones.
-    allow_origin_regex=r"https://startup-[a-z0-9-]+-divyandivi\.vercel\.app",
+    # Vercel gives every deployment and branch its own URL; allow this project's.
+    allow_origin_regex=os.getenv("FRONTEND_ORIGIN_REGEX", r"https://startup[a-z0-9-]*\.vercel\.app"),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -91,6 +102,19 @@ class Question(BaseModel):
 @app.get("/")
 def read_root():
     return {"status": "ok"}
+
+
+@app.get("/health")
+def health():
+    """Checks the database too. Pinged daily so the free Supabase project stays awake."""
+    with db() as cur:
+        cur.execute("SELECT 1")
+    return {"status": "ok", "database": "ok"}
+
+
+@app.get("/usage")
+def usage(user: User = Depends(current_user)):
+    return ai_usage_today(user)
 
 
 # ---------- Documents ----------
@@ -247,7 +271,7 @@ Meeting note:
 @app.post("/extract")
 def extract_meeting(note: MeetingNote, user: User = Depends(current_user)):
     """Return a draft for review. Nothing is saved until /extract/save."""
-    reply = ask_claude([{"role": "user", "content": extraction_prompt(note.text)}], max_tokens=4096)
+    reply = ai_call(user, [{"role": "user", "content": extraction_prompt(note.text)}], max_tokens=4096)
     try:
         raw = parse_json_object(reply)
     except (ValueError, json.JSONDecodeError):
@@ -338,7 +362,7 @@ instead of guessing. Be concise and specific. Use markdown lists where helpful."
     messages = [{"role": h.role, "content": h.content} for h in question.history[-10:]]
     messages.append({"role": "user", "content": prompt})
 
-    return {"answer": ask_claude(messages)}
+    return {"answer": ai_call(user, messages)}
 
 
 @app.post("/report")
@@ -397,7 +421,7 @@ Generate a weekly startup execution report with these sections:
 
 Be specific and actionable. Base everything only on the data provided."""
 
-    content = ask_claude([{"role": "user", "content": prompt}])
+    content = ai_call(user, [{"role": "user", "content": prompt}])
 
     with db() as cur:
         cur.execute(

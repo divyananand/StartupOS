@@ -37,7 +37,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: "/extract", label: "Extract", icon: SparklesIcon },
       { href: "/ask", label: "Ask", icon: ChatIcon },
       { href: "/report", label: "Reports", icon: ReportIcon },
-      { href: "/agents", label: "Agents", icon: BotIcon },
+      { href: "/agents", label: "Workflows", icon: BotIcon },
     ],
   },
 ];

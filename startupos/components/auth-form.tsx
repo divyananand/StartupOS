@@ -5,6 +5,7 @@ import { useState } from "react";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import DemoButton from "./demo-button";
 import { Logo } from "./sidebar";
 import { Button, Field, inputClass } from "./ui";
 import { AlertIcon } from "./icons";
@@ -108,6 +109,12 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
               {isSignup ? "Create account" : "Log in"}
             </Button>
           </form>
+
+          <div className="my-5 flex items-center gap-3 text-xs text-zinc-400">
+            <span className="h-px flex-1 bg-zinc-200" /> or <span className="h-px flex-1 bg-zinc-200" />
+          </div>
+          <DemoButton className="w-full" label="Explore a demo workspace" />
+          <p className="mt-2 text-center text-xs text-zinc-400">Sample data, no sign-up. Deleted after 24 hours.</p>
         </div>
 
         <p className="mt-6 text-center text-sm text-zinc-500">

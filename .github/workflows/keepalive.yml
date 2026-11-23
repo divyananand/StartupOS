@@ -1,0 +1,25 @@
+name: Keep backend awake
+
+# Free Supabase projects pause after a week without activity. This pings the
+# backend's /health endpoint (which runs a database query) once a day.
+# Setup: GitHub repo -> Settings -> Secrets and variables -> Actions ->
+# Variables -> New repository variable: BACKEND_URL = https://your-backend.up.railway.app
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::warning::Set the BACKEND_URL repository variable to enable this check."
+            exit 0
+          fi
+          curl --fail --silent --show-error --retry 3 --retry-delay 15 --max-time 60 "$BACKEND_URL/health"

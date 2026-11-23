@@ -18,18 +18,18 @@ import {
   SparklesIcon,
 } from "@/components/icons";
 
-const SAMPLE = `Weekly sync – Monday
+// Deliberately leaves some owners and deadlines out, to show the follow-up questions.
+const SAMPLE = `Product sync – Thursday
 
-Attendees: Priya, Arjun, Sam
+Attendees: Maya, Leo, Priya
 
-- Priya will finish the onboarding flow redesign by Friday. High priority, it's blocking the beta.
-- We need to set up Stripe billing soon.
-- Someone should write the investor update email.
-- Sam to prepare the beta launch checklist by the end of the month, nice to have.
-- We're still waiting on legal to approve the privacy policy, can't launch the beta until then.
-- AWS credits run out in 2 weeks and we haven't heard back from the startup program.
-- Decided to launch the beta with 50 users instead of 200.
-- Agreed to move standups to Tuesday and Thursday only.`;
+- Maya will ship the CSV export by next Wednesday. High priority, two customers are waiting on it.
+- We need to fix the login timeout bug soon, people keep getting logged out.
+- Someone should update the pricing page with the new plans.
+- Leo to book a venue for the launch party by December 10th, nice to have.
+- Still waiting on Apple to review the iOS app, so we can't announce mobile yet.
+- Decided to price the Pro plan at $29/month.
+- Agreed to pause paid ads until onboarding conversion improves.`;
 
 type ReviewTask = Omit<DraftTask, "duplicate"> & { key: number; include: boolean; duplicate: boolean };
 type ReviewStatement = DraftStatement & { key: number; include: boolean };

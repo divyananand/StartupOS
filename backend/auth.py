@@ -5,11 +5,13 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 import psycopg2
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from db import USER_TABLES, db
+from demo import DEMO_TTL_HOURS, seed_demo_workspace
+from limits import auth_limiter, client_ip, demo_limiter, enforce
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
@@ -32,10 +34,10 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
-def create_token(user_id: int) -> str:
+def create_token(user_id: int, lifetime: timedelta = TOKEN_LIFETIME) -> str:
     now = datetime.now(timezone.utc)
     return jwt.encode(
-        {"sub": str(user_id), "iat": now, "exp": now + TOKEN_LIFETIME},
+        {"sub": str(user_id), "iat": now, "exp": now + lifetime},
         JWT_SECRET,
         algorithm=JWT_ALGORITHM,
     )
@@ -60,7 +62,7 @@ def current_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -
         raise unauthorized
 
     with db() as cur:
-        cur.execute("SELECT id, name, email FROM users WHERE id = %s", (user_id,))
+        cur.execute("SELECT id, name, email, is_demo FROM users WHERE id = %s", (user_id,))
         user = cur.fetchone()
     if user is None:
         raise unauthorized
@@ -98,19 +100,25 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1)
 
 
-def auth_response(user: dict) -> dict:
+def auth_response(user: dict, lifetime: timedelta = TOKEN_LIFETIME) -> dict:
     return {
-        "token": create_token(user["id"]),
-        "user": {"id": user["id"], "name": user["name"], "email": user["email"]},
+        "token": create_token(user["id"], lifetime),
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "is_demo": bool(user.get("is_demo")),
+        },
     }
 
 
 @router.post("/register")
-def register(body: RegisterIn):
+def register(body: RegisterIn, request: Request):
     email = body.email.lower()
+    enforce(auth_limiter, f"ip:{client_ip(request)}")
     try:
         with db() as cur:
-            cur.execute("SELECT COUNT(*) AS n FROM users")
+            cur.execute("SELECT COUNT(*) AS n FROM users WHERE NOT is_demo")
             is_first_user = cur.fetchone()["n"] == 0
             cur.execute(
                 "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s) RETURNING id, name, email",
@@ -128,7 +136,8 @@ def register(body: RegisterIn):
 
 
 @router.post("/login")
-def login(body: LoginIn):
+def login(body: LoginIn, request: Request):
+    enforce(auth_limiter, f"ip:{client_ip(request)}", f"email:{body.email.lower()}")
     with db() as cur:
         cur.execute("SELECT id, name, email, password_hash FROM users WHERE email = %s", (body.email.lower(),))
         user = cur.fetchone()
@@ -138,6 +147,26 @@ def login(body: LoginIn):
     if not verify_password(body.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
     return auth_response(dict(user))
+
+
+@router.post("/demo")
+def create_demo(request: Request):
+    """Create a throwaway account with a private sample workspace."""
+    enforce(demo_limiter, f"ip:{client_ip(request)}")
+    with db() as cur:
+        # Clean up expired demos; their data goes with them (ON DELETE CASCADE).
+        cur.execute(
+            "DELETE FROM users WHERE is_demo AND created_at < NOW() - make_interval(hours => %s)",
+            (DEMO_TTL_HOURS,),
+        )
+        cur.execute(
+            "INSERT INTO users (name, email, password_hash, is_demo) VALUES (%s, %s, %s, TRUE) "
+            "RETURNING id, name, email, is_demo",
+            ("Demo Founder", f"demo-{secrets.token_hex(6)}@demo.startupos", hash_password(secrets.token_urlsafe(24))),
+        )
+        user = dict(cur.fetchone())
+        seed_demo_workspace(cur, user["id"])
+    return auth_response(user, timedelta(hours=DEMO_TTL_HOURS))
 
 
 @router.get("/me")

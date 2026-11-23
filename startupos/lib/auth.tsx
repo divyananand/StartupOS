@@ -8,6 +8,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  is_demo: boolean;
 }
 
 type AuthStatus = "loading" | "authed" | "anon" | "error";
@@ -18,6 +19,7 @@ interface AuthContextValue {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  startDemo: () => Promise<void>;
   logout: () => void;
   retry: () => void;
 }
@@ -74,6 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(res.token);
   }, []);
 
+  const startDemo = useCallback(async () => {
+    const res = await api<{ token: string; user: User }>("/auth/demo", { method: "POST" });
+    setSession({ token: res.token, user: res.user });
+    setToken(res.token);
+  }, []);
+
   const logout = useCallback(() => {
     setSession(null);
     setToken(null);
@@ -85,8 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ status, user, error, login, register, logout, retry }),
-    [status, user, error, login, register, logout, retry]
+    () => ({ status, user, error, login, register, startDemo, logout, retry }),
+    [status, user, error, login, register, startDemo, logout, retry]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

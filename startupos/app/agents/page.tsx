@@ -73,8 +73,8 @@ export default function AgentsPage() {
   return (
     <Page>
       <PageHeader
-        title="AI agents"
-        description="The Claude-powered workers behind StartupOS. Each one runs when you trigger it."
+        title="AI workflows"
+        description="The three Claude-powered workflows behind StartupOS. Each one runs when you trigger it."
         actions={
           <Badge tone={offline ? "red" : "green"} className="h-7 px-2.5">
             <span className={`h-1.5 w-1.5 rounded-full ${offline ? "bg-red-500" : "bg-emerald-500"}`} />
