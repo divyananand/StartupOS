@@ -15,7 +15,7 @@ Built this as a learning project to go from zero to full stack AI engineering in
 
 ## Tech stack
 
-- **Frontend** — Next.js 15, TypeScript, Tailwind CSS
+- **Frontend** — Next.js 16, React 19, TypeScript, Tailwind CSS v4
 - **Backend** — FastAPI, Python
 - **Database** — PostgreSQL via Supabase
 - **AI** — Claude API (claude-sonnet-4-6)
@@ -45,9 +45,45 @@ npm run dev
 
 Create a `.env` file in `backend/` with:
 
+```
 ANTHROPIC_KEY=your-key
 DATABASE_URL=your-supabase-url
+# Signs login tokens. Use a long random string and keep it secret:
+#   python -c "import secrets; print(secrets.token_urlsafe(48))"
+JWT_SECRET=your-random-secret
+# Optional: comma-separated list of allowed frontend origins
+# (defaults to the Vercel URL plus http://localhost:3000)
+FRONTEND_ORIGINS=http://localhost:3000
+```
 
+Create a `.env.local` file in `startupos/` (the name must be exactly `.env.local`) with:
 
-Create a `.env.local` file in `startupos/` with:
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
 
+The database tables (including `users` and each table's `user_id`) are created or
+upgraded automatically when the backend starts. The **first account** created takes
+ownership of any data that existed before accounts were added.
+
+## API
+
+Every endpoint except `/auth/*` needs an `Authorization: Bearer <token>` header and
+only ever reads or changes the logged-in user's own data.
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/auth/register` | Create an account → `{token, user}` |
+| POST | `/auth/login` | Log in → `{token, user}` |
+| GET | `/auth/me` | The logged-in user |
+| POST | `/extract` | Extract a **draft** from meeting notes (nothing is saved). Flags missing owners, vague or past deadlines, missing priorities and duplicates |
+| POST | `/extract/save` | Save the reviewed draft. Every task must have an owner, a real date and a priority |
+| GET / POST | `/tasks` | List / create tasks |
+| PATCH / DELETE | `/tasks/{id}` | Update title, owner, deadline, priority or status / delete |
+| GET / POST | `/documents` | List / create documents |
+| DELETE | `/documents/{id}` | Delete a document |
+| GET | `/blockers` | List blockers |
+| PATCH | `/blockers/{id}` | Mark a blocker `open` or `resolved` |
+| GET | `/decisions` | List decisions |
+| POST | `/ask` | Ask a question about company data (with chat history) |
+| GET / POST | `/report` | List / generate weekly reports |

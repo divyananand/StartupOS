@@ -1,86 +1,125 @@
-const logs = [
-  {
-    id: 1,
-    agent: "Research Agent",
-    action: "Collected market data",
-    status: "completed",
-    timestamp: "10 minutes ago",
-  },
-  {
-    id: 2,
-    agent: "Analytics Agent",
-    action: "Processing user insights",
-    status: "running",
-    timestamp: "5 minutes ago",
-  },
-  {
-    id: 3,
-    agent: "Document Agent",
-    action: "Failed to generate report",
-    status: "failed",
-    timestamp: "1 hour ago",
-  },
-];
+"use client";
 
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import type { Blocker, Decision, Report, Task } from "@/lib/types";
+import { timeAgo } from "@/lib/utils";
+import { Badge, buttonClass, Card, Page, PageHeader, Skeleton } from "@/components/ui";
+import { ArrowRightIcon, ChatIcon, ReportIcon, SparklesIcon } from "@/components/icons";
 
-function getStatusStyle(status: string) {
-  if (status === "completed") {
-    return "bg-green-100 text-green-700";
-  } 
-  else if (status === "running") {
-    return "bg-blue-100 text-blue-700";
-  } 
-  else {
-    return "bg-red-100 text-red-700";
-  }
-}
+type Stats = { tasks: number; blockers: number; decisions: number; reports: number; lastReport: string | null };
 
+export default function AgentsPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [offline, setOffline] = useState(false);
 
-export default function Agents() {
+  useEffect(() => {
+    Promise.all([
+      api<Task[]>("/tasks"),
+      api<Blocker[]>("/blockers"),
+      api<Decision[]>("/decisions"),
+      api<Report[]>("/report"),
+    ])
+      .then(([tasks, blockers, decisions, reports]) =>
+        setStats({
+          tasks: tasks.length,
+          blockers: blockers.length,
+          decisions: decisions.length,
+          reports: reports.length,
+          lastReport: reports[reports.length - 1]?.created_at ?? null,
+        })
+      )
+      .catch(() => setOffline(true));
+  }, []);
+
+  const agents = [
+    {
+      name: "Meeting Extractor",
+      icon: SparklesIcon,
+      href: "/extract",
+      cta: "Extract notes",
+      description: "Reads raw meeting notes and turns them into tasks (with owner, priority and deadline), blockers and decisions.",
+      reads: "Meeting notes",
+      writes: "Tasks, blockers, decisions",
+      stat: stats && `${stats.tasks + stats.blockers + stats.decisions} items in your workspace`,
+    },
+    {
+      name: "Ask Assistant",
+      icon: ChatIcon,
+      href: "/ask",
+      cta: "Ask a question",
+      description: "Answers questions in plain English using your company data, and remembers the conversation for follow-ups.",
+      reads: "Tasks, blockers, decisions, documents",
+      writes: "Nothing (read-only)",
+      stat: stats && `${stats.tasks} tasks and ${stats.decisions} decisions available as context`,
+    },
+    {
+      name: "Report Writer",
+      icon: ReportIcon,
+      href: "/report",
+      cta: "Generate report",
+      description: "Summarises the last 7 days into progress, open blockers, key decisions and next week's priorities.",
+      reads: "Last 7 days of activity",
+      writes: "Weekly reports",
+      stat:
+        stats &&
+        (stats.reports
+          ? `${stats.reports} report${stats.reports === 1 ? "" : "s"} · last ${timeAgo(stats.lastReport) || "recently"}`
+          : "No reports yet"),
+    },
+  ];
+
   return (
-    <div className="px-6 py-8">
+    <Page>
+      <PageHeader
+        title="AI agents"
+        description="The Claude-powered workers behind StartupOS. Each one runs when you trigger it."
+        actions={
+          <Badge tone={offline ? "red" : "green"} className="h-7 px-2.5">
+            <span className={`h-1.5 w-1.5 rounded-full ${offline ? "bg-red-500" : "bg-emerald-500"}`} />
+            {offline ? "Backend offline" : "Ready"}
+          </Badge>
+        }
+      />
 
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">
-        Agent Logs
-      </h1>
-
-
-      <div className="space-y-4">
-
-        {logs.map((log) => (
-          <div
-            key={log.id}
-            className="border border-gray-200 rounded-lg p-4 flex justify-between items-center"
-          >
-
-            <div>
-              <h2 className="font-semibold text-gray-900">
-                {log.agent}
-              </h2>
-
-              <p className="text-gray-600">
-                {log.action}
-              </p>
-
-              <p className="text-sm text-gray-500">
-                {log.timestamp}
-              </p>
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {agents.map((a) => (
+          <Card key={a.name} className="flex flex-col p-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                <a.icon />
+              </span>
+              <h2 className="font-semibold text-zinc-900">{a.name}</h2>
             </div>
+            <p className="mt-4 text-sm text-zinc-600">{a.description}</p>
 
+            <dl className="mt-5 space-y-2 text-sm">
+              <div className="flex gap-2">
+                <dt className="w-14 shrink-0 text-zinc-400">Reads</dt>
+                <dd className="text-zinc-700">{a.reads}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-14 shrink-0 text-zinc-400">Writes</dt>
+                <dd className="text-zinc-700">{a.writes}</dd>
+              </div>
+            </dl>
 
-            <span
-              className={`px-3 py-1 rounded-full text-sm ${getStatusStyle(
-                log.status
-              )}`}
-            >
-              {log.status}
-            </span>
-
-          </div>
+            <div className="mt-6 flex flex-1 flex-col justify-end gap-4 border-t border-zinc-100 pt-4">
+              {offline ? (
+                <p className="text-xs text-zinc-400">Activity unavailable</p>
+              ) : a.stat ? (
+                <p className="text-xs text-zinc-500">{a.stat}</p>
+              ) : (
+                <Skeleton className="h-3 w-40" />
+              )}
+              <Link href={a.href} className={buttonClass("secondary", "sm", "self-start")}>
+                {a.cta} <ArrowRightIcon width={14} height={14} />
+              </Link>
+            </div>
+          </Card>
         ))}
-
       </div>
-
-    </div>
+    </Page>
   );
 }
